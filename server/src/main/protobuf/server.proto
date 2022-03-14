@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "fr.dopolytech.polydrive.grpc";
+option java_outer_classname = "ServerProto";
+
+package server;
+
+import "google/protobuf/timestamp.proto";
+
+message File {
+  // The file name with extension
+  string base_name = 1;
+  // Full path to file in synced directory
+  string path = 2;
+
+  google.protobuf.Timestamp last_updated = 3;
+  google.protobuf.Timestamp created = 4;
+}
+
+message Client {
+  string host_name = 1;
+  string ip = 2;
+
+  string os = 16;
+}
+
+message FileRequest {
+  enum EventType {
+    UNKNOWN = 0;
+    CREATE = 1;
+    UPDATE = 2;
+    DELETE = 3;
+  }
+
+  Client client_name = 1;
+  File file = 2;
+  EventType event_type = 3;
+}
+
+message FileResponse {
+}
+
+
+service FileManagerService {
+    rpc FileEvent (FileRequest) returns (FileResponse);
+}
