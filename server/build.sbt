@@ -11,3 +11,6 @@ libraryDependencies += "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaV
 libraryDependencies +=
   "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion
 libraryDependencies += "com.typesafe.akka" %% "akka-stream-typed" % AkkaVersion
+libraryDependencies += "com.typesafe.akka" %% "akka-discovery" % AkkaVersion
+
+enablePlugins(AkkaGrpcPlugin)
