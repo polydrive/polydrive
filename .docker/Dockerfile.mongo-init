@@ -1,0 +1,4 @@
+FROM mongo:5.0.6
+COPY ./init-replicaset.sh /scripts/init-replicaset.sh
+RUN chmod +x /scripts/init-replicaset.sh
+ENTRYPOINT [ "/scripts/init-replicaset.sh" ]

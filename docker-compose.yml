@@ -1,0 +1,104 @@
+version: '3.8'
+
+# Common settings for Mongo based containers
+x-mongo-common: &mongo-common
+  image: mongo:5.0.6
+  restart: always
+  network_mode: host
+
+# Common settings for MinIO based containers
+x-minio-common: &minio-common
+  image: quay.io/minio/minio:RELEASE.2022-03-11T23-57-45Z
+  command: server --console-address ":9001" http://minio-{1...4}/data{1...2}
+  expose:
+    - "9000"
+    - "9001"
+  environment:
+    MINIO_ROOT_USER: polydrive
+    MINIO_ROOT_PASSWORD: polydrive
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+    interval: 30s
+    timeout: 20s
+    retries: 3
+
+services:
+  mongo-rs-1:
+    <<: *mongo-common
+    container_name: mongo-rs-1
+    command: ["mongod", "--port", "27017", "--replSet", "polydrive-rs"]
+    volumes:
+      - ./.docker/data/mongo-rs-1:/data/db
+
+  mongo-rs-2:
+    <<: *mongo-common
+    container_name: mongo-rs-2
+    command: ["mongod", "--port", "27018", "--replSet", "polydrive-rs"]
+    volumes:
+      - ./.docker/data/mongo-rs-2:/data/db
+
+  mongo-rs-3:
+    <<: *mongo-common
+    container_name: mongo-rs-3
+    command: ["mongod", "--port", "27019", "--replSet", "polydrive-rs"]
+    volumes:
+      - ./.docker/data/mongo-rs-3:/data/db
+
+  # Special container used to init the Mongo RS
+  mongo-rs-initiator:
+    container_name: mongo-rs-initiator
+    network_mode: host
+    build:
+      context: .docker
+      dockerfile: Dockerfile.mongo-init
+    depends_on:
+      - mongo-rs-1
+      - mongo-rs-2
+      - mongo-rs-3
+
+  minio-1:
+    <<: *minio-common
+    container_name: minio-1
+    hostname: minio-1
+    volumes:
+      - .docker/data/minio-1-data-1:/data1
+      - .docker/data/minio-1-data-2:/data2
+
+  minio-2:
+    <<: *minio-common
+    container_name: minio-2
+    hostname: minio-2
+    volumes:
+      - .docker/data/minio-2-data-1:/data1
+      - .docker/data/minio-2-data-2:/data2
+
+  minio-3:
+    <<: *minio-common
+    container_name: minio-3
+    hostname: minio-3
+    volumes:
+      - .docker/data/minio-3-data-1:/data1
+      - .docker/data/minio-3-data-2:/data2
+
+  minio-4:
+    <<: *minio-common
+    container_name: minio-4
+    hostname: minio-4
+    volumes:
+      - .docker/data/minio-4-data-1:/data1
+      - .docker/data/minio-4-data-2:/data2
+
+  nginx:
+    container_name: minio-nginx
+    image: nginx:1.19.2-alpine
+    hostname: nginx
+    volumes:
+      - .docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    depends_on:
+      - minio-1
+      - minio-2
+      - minio-3
+      - minio-4
