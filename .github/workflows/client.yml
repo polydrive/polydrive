@@ -1,0 +1,75 @@
+name: Polydrive client CI
+on: [push, pull_request, create]
+
+jobs:
+  basic_ci:
+    name: Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+    strategy:
+      fail-fast: false
+      matrix:
+        rust:
+          - stable
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: Install Rust toolchain (${{ matrix.rust }})
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          override: true
+          components: rustfmt, clippy
+
+      - name: Build and install with default features
+        run: cargo build
+
+      - name: Run cargo test
+        uses: marcopolo/cargo@master
+        with:
+          working-directory: ./client
+          command: test
+
+      - name: Run cargo fmt check
+        uses: marcopolo/cargo@master
+        with:
+          working-directory: ./client
+          command: fmt
+          args: --all -- --check
+
+      - name: Run rust lint check
+        uses: marcopolo/cargo@master
+        with:
+          working-directory: ./client
+          command: clippy
+          args: --all-targets --all-features -- -D warnings
+  release:
+    name: release ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-gnu
+            archive: zip
+          - target: x86_64-unknown-linux-musl
+            archive: tar.gz tar.xz
+          - target: x86_64-apple-darwin
+            archive: zip
+    steps:
+      - uses: actions/checkout@master
+      - name: Compile and release
+        uses: rust-build/rust-build.action@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUSTTARGET: ${{ matrix.target }}
+          ARCHIVE_TYPES: ${{ matrix.archive }}
