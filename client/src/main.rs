@@ -1,11 +1,11 @@
 mod agent;
 mod server;
 
+use crate::server::Server;
 use agent::list::ListCommand;
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use log::LevelFilter;
-use server::watch::WatchCommand;
 
 pub trait Handler {
     /// Executes the command handler.
@@ -26,9 +26,29 @@ struct Cli {
     #[clap(short, long)]
     server: bool,
 
+    /// A list of files or directories to watch.
+    ///
+    /// Supports glob-based path, e.g: /tmp/**/**.png. If the path is a glob, it'll be expanded, so /tmp/*/**.png will
+    /// detect every png FILE present behind your /tmp folder. Be aware, if you pass a glob path, it will not watch folders,
+    /// but only existing files matching the glob pattern when the command is executed.
+    ///
+    /// You can use the client mode to add more watch later.
+    ///
+    /// Examples:
+    ///
+    /// To watch every changes, files and folders, inside /tmp :
+    ///
+    /// client --server --watch /tmp
+    ///
+    /// To watch every changes only on existing .png files :
+    ///
+    /// client --server --watch /**/*.png
+    #[clap(long = "watch")]
+    files: Vec<String>,
+
     /// The command to execute.
     #[clap(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 impl Cli {
@@ -36,45 +56,26 @@ impl Cli {
     ///
     /// If the command is not valid for the current enabled mode (server or agent), we must throw an error.
     pub fn command(self) -> Result<Box<dyn Handler>> {
-        let mode = if self.server { "server" } else { "agent" };
-        let command = if self.server {
-            self.get_server_commands()
-        } else {
-            self.get_agent_commands()
-        };
-
-        if command.is_none() {
-            return Err(anyhow!("Invalid command. Check if the command exists and if it is valid for current mode : {}", mode));
+        if self.server {
+            Server::start(&self.files)?;
+            return Err(anyhow!("failed to run the server"));
         }
 
-        Ok(command.unwrap())
-    }
-
-    /// Get the agent mode commands
-    ///
-    /// Must return `None` for every commands that is not compatible with the current mode.
-    pub fn get_agent_commands(self) -> Option<Box<dyn Handler>> {
-        match self.command {
-            Command::List(cmd) => Some(Box::new(cmd)),
-            _ => None,
+        if let Some(command) = self.command {
+            return match command {
+                Command::List(cmd) => Ok(Box::new(cmd)),
+            };
         }
-    }
 
-    /// Get the server mode commands
-    ///
-    /// Must return `None` for every commands that is not compatible with the current mode.
-    pub fn get_server_commands(self) -> Option<Box<dyn Handler>> {
-        match self.command {
-            Command::Watch(cmd) => Some(Box::new(cmd)),
-            _ => None,
-        }
+        Err(anyhow!(
+            "no command provided. To start client in server mode, use --server."
+        ))
     }
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
     List(ListCommand),
-    Watch(WatchCommand),
 }
 
 fn main() -> Result<()> {
