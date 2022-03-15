@@ -1,5 +1,5 @@
 [package]
-name = "client"
+name = "polydrive"
 version = "0.1.0"
 edition = "2021"
 authors = [
@@ -17,3 +17,8 @@ clap = { version = "3.1.6", features = ["derive"] }
 log = "0.4.14"
 env_logger = "0.9.0"
 anyhow = "1.0.56"
+glob = "0.3.0"
+notify = "4.0.17"
+
+[dev-dependencies]
+tempfile = "3.3.0"
