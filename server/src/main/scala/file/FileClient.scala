@@ -7,23 +7,19 @@ import io.minio.{BucketExistsArgs, GetPresignedObjectUrlArgs, MinioClient}
 
 import java.util.concurrent.TimeUnit
 
-class FileClient(config: Config) {
+class FileClient(minioConfig: MinioConfig) {
 
   /** The minio client which will be used to perform
     * requests against MinIO instance
     */
   val client: MinioClient = MinioClient
     .builder()
-    .endpoint(config.getString("minio.url"))
+    .endpoint(minioConfig.url)
     .credentials(
-      config.getString("minio.access_key"),
-      config.getString("minio.secret_key")
+      minioConfig.accessKey,
+      minioConfig.secretKey
     )
     .build()
-
-  /** The bucket name
-    */
-  val bucket = config.getString("minio.bucket")
 
   /** A boolean to control if the buckets is created or not.
     */
@@ -31,7 +27,7 @@ class FileClient(config: Config) {
     client.bucketExists(
       BucketExistsArgs
         .builder()
-        .bucket(bucket)
+        .bucket(minioConfig.bucket)
         .build()
     )
 
@@ -45,7 +41,7 @@ class FileClient(config: Config) {
     val args = GetPresignedObjectUrlArgs
       .builder()
       .method(method)
-      .bucket(bucket)
+      .bucket(minioConfig.bucket)
       .expiry(15, TimeUnit.MINUTES)
       .`object`(fileName)
       .build()

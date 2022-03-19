@@ -1,9 +1,11 @@
 package fr.dopolytech.polydrive
 
 import grpc.FileManagerServiceHandler
+import file.{MinioConfig, FileClient}
 
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
+import akka.event.slf4j.Logger
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import com.typesafe.config.ConfigFactory
@@ -17,32 +19,49 @@ object Server {
     val conf = ConfigFactory
       .parseString("akka.http.server.preview.enable-http2 = on")
       .withFallback(ConfigFactory.defaultApplication())
+      .resolve()
+
     val system = ActorSystem[Nothing](Behaviors.empty, "Server", conf)
-    new Server(system).run()
+    val minioConfig = MinioConfig(
+      conf.getString("minio.url"),
+      conf.getString("minio.access_key"),
+      conf.getString("minio.secret_key"),
+      conf.getString("minio.bucket")
+    )
+
+    new Server(system).run(conf.getInt("grpc.port"), minioConfig)
   }
 }
 
 class Server(system: ActorSystem[_]) {
-  def run(): Future[Http.ServerBinding] = {
+  private val logger = Logger(getClass.getName)
+
+  def run(port: Int, minioConfig: MinioConfig): Future[Http.ServerBinding] = {
     implicit val sys: ActorSystem[_] = system
     implicit val ec: ExecutionContext = system.executionContext
 
+    val fileClient = new FileClient(minioConfig)
     val server: HttpRequest => Future[HttpResponse] =
-      FileManagerServiceHandler(new FileManagerServiceImpl(system))
+      FileManagerServiceHandler(new FileManagerServiceImpl(system, fileClient))
 
     val bound: Future[Http.ServerBinding] = Http(system)
-      .newServerAt(interface = "127.0.0.1", port = 8097)
+      .newServerAt(interface = "127.0.0.1", port = port)
       .bind(server)
       .map(_.addToCoordinatedShutdown(hardTerminationDeadline = 10.seconds))
 
     bound.onComplete {
       case Success(binding) =>
         val address = binding.localAddress
-        println(
-          s"gRPC server bound to ${address.getHostString}:${address.getPort}"
+        logger.info(
+          "gRPC server bound to {}:{}",
+          address.getHostString,
+          address.getPort
         )
       case Failure(ex) =>
-        println("Failed to bind gRPC endpoint, terminating system", ex)
+        logger.error(
+          "gRPC server failed to bind gRPC endpoint, terminating system, error: {}",
+          ex
+        )
         system.terminate()
     }
 
