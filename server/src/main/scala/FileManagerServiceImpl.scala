@@ -15,11 +15,16 @@ import io.minio.http.Method
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.ExecutionContext.Implicits.global
+import persistency.MongoConfig
 
-class FileManagerServiceImpl(system: ActorSystem[_], minioClient: FileClient)
-    extends FileManagerService {
+class FileManagerServiceImpl(
+    system: ActorSystem[_],
+    minioClient: FileClient,
+    mongoConfig: MongoConfig
+) extends FileManagerService {
   private val logger = Logger(getClass.getName)
   private implicit val sys: ActorSystem[_] = system
+  private val fileRequester: FileRequester = new FileRequester(mongoConfig)
 
   // We create a stream that can receive dynamically defined inputs
   // and dynamically defined outputs
@@ -51,9 +56,42 @@ class FileManagerServiceImpl(system: ActorSystem[_], minioClient: FileClient)
       in.getClientName.hostName
     )
     val file = in.getFile
-    val link = minioClient.getPresignedUrl(file.baseName, Method.PUT)
+    val file_doc = FileDocument.from(file)
 
+    in.eventType match {
+      case FileEventType.CREATE => {
+        fileRequester.findExists(file.path).map {
+          case true  => fileRequester.update(file_doc)
+          case false => fileRequester.create(file_doc)
+        }
+
+      }
+      case FileEventType.UPDATE => {
+        fileRequester.update(file_doc)
+      }
+      case FileEventType.UNKNOWN => {
+        logger.error("Could not identity validate fileEvent type")
+        new GrpcServiceException(
+          Status.INVALID_ARGUMENT.withDescription("Invalid event type UNKNOWN")
+        )
+      }
+      case FileEventType.DELETE => {
+        logger.error("Trying to delete file but not implemented")
+        new GrpcServiceException(
+          Status.UNIMPLEMENTED
+        )
+      }
+      case _ => {
+        new GrpcServiceException(
+          Status.INVALID_ARGUMENT.withDescription(
+            "Couldn't understand event type"
+          )
+        )
+      }
+    }
     Source.single(in.getFile).viaMat(busFlow)(Keep.right).run()
+
+    val link = minioClient.getPresignedUrl(file.baseName, Method.PUT)
     Future.successful(
       FileResponse(link)
     )
