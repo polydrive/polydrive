@@ -97,3 +97,6 @@ modules.xml
 .vscode
 
 .docker/data
+project
+target
+.bsp
