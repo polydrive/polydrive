@@ -49,7 +49,7 @@ impl From<&Vec<String>> for Pool {
 
 #[cfg(test)]
 mod tests {
-    use crate::server::watcher::pool::Pool;
+    use crate::watcher::pool::Pool;
     use std::fs::{remove_dir_all, File};
     use tempfile::tempdir;
 

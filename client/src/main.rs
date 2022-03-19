@@ -1,11 +1,14 @@
 mod agent;
-mod server;
+mod indexer;
+mod watcher;
 
-use crate::server::Server;
+use crate::indexer::Indexer;
+use crate::watcher::PoolWatcher;
 use agent::list::ListCommand;
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
-use log::LevelFilter;
+use log::{info, LevelFilter};
+use std::sync::{Arc, Mutex};
 
 pub trait Handler {
     /// Executes the command handler.
@@ -24,7 +27,7 @@ struct Cli {
 
     /// If set, the client will be act as a server.
     #[clap(short, long)]
-    server: bool,
+    daemon: bool,
 
     /// A list of files or directories to watch.
     ///
@@ -56,11 +59,6 @@ impl Cli {
     ///
     /// If the command is not valid for the current enabled mode (server or agent), we must throw an error.
     pub fn command(self) -> Result<Box<dyn Handler>> {
-        if self.server {
-            Server::start(&self.files)?;
-            return Err(anyhow!("failed to run the server"));
-        }
-
         if let Some(command) = self.command {
             return match command {
                 Command::List(cmd) => Ok(Box::new(cmd)),
@@ -78,7 +76,8 @@ pub enum Command {
     List(ListCommand),
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cli: Cli = Cli::parse();
 
     // Configure the logger
@@ -89,6 +88,18 @@ fn main() -> Result<()> {
             _ => LevelFilter::Info,
         })
         .init();
+
+    if cli.daemon {
+        info!("starting daemon");
+        let indexer = Indexer::bootstrap().await?;
+
+        PoolWatcher::init(&cli.files)
+            .add_listener(Arc::new(Mutex::new(indexer.clone())))
+            .start()
+            .await?;
+
+        return Err(anyhow!("failed to run the daemon"));
+    }
 
     cli.command()?.handler()
 }
