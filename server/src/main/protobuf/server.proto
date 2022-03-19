@@ -39,9 +39,10 @@ message FileRequest {
 }
 
 message FileResponse {
+  string link = 1;
 }
 
 
 service FileManagerService {
-    rpc FileEvent (FileRequest) returns (FileResponse);
+  rpc FileEvent (FileRequest) returns (FileResponse);
 }

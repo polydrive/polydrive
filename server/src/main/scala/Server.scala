@@ -1,11 +1,12 @@
 package fr.dopolytech.polydrive
 
+import grpc.FileManagerServiceHandler
+
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import com.typesafe.config.ConfigFactory
-import grpc.FileManagerServiceHandler
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
@@ -38,9 +39,7 @@ class Server(system: ActorSystem[_]) {
       case Success(binding) =>
         val address = binding.localAddress
         println(
-          "gRPC server bound to {}:{}",
-          address.getHostString,
-          address.getPort
+          s"gRPC server bound to ${address.getHostString}:${address.getPort}"
         )
       case Failure(ex) =>
         println("Failed to bind gRPC endpoint, terminating system", ex)
