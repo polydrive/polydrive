@@ -10,18 +10,30 @@ val AkkaVersion = "2.6.18"
 val minioVersion = "8.3.7"
 val commonsioVersion = "20030203.000550"
 
-libraryDependencies ++= {
-  Seq(
-    "io.minio" % "minio" % minioVersion,
-    "commons-io" % "commons-io" % commonsioVersion,
-    "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test,
-    "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion,
-    "com.typesafe.akka" %% "akka-stream-typed" % AkkaVersion,
-    "com.typesafe.akka" %% "akka-discovery" % AkkaVersion,
-    "ch.qos.logback" % "logback-classic" % "1.2.11",
-    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4"
-  )
+libraryDependencies ++= Seq(
+  "com.typesafe.akka" %% "akka-actor-typed" % AkkaVersion,
+  "com.typesafe.akka" %% "akka-stream-typed" % AkkaVersion,
+  "com.typesafe.akka" %% "akka-discovery" % AkkaVersion,
+  "ch.qos.logback" % "logback-classic" % "1.2.11"
+)
 
-}
+// MINIO
+libraryDependencies ++= Seq(
+  "io.minio" % "minio" % minioVersion,
+  "commons-io" % "commons-io" % commonsioVersion
+)
+
+// TESTS
+libraryDependencies ++= Seq(
+  "org.scalatest" %% "scalatest" % "3.2.11" % Test,
+  "com.typesafe.akka" %% "akka-stream-testkit" % AkkaVersion % Test,
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test
+)
+
+// Database & persistence of data
+libraryDependencies ++= Seq(
+  "com.lightbend.akka" %% "akka-stream-alpakka-mongodb" % "3.0.4",
+  "com.typesafe.akka" %% "akka-stream-typed" % AkkaVersion
+)
 
 enablePlugins(AkkaGrpcPlugin)
