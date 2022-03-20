@@ -1,15 +1,13 @@
+use crate::grpc::file_manager_service_client::FileManagerServiceClient;
+use crate::grpc::{File, FileEventType, FileRequest, FileResponse};
 use crate::watcher::WatcherListener;
 use anyhow::Result;
 use async_trait::async_trait;
-use grpc::file_manager_service_client::FileManagerServiceClient;
-use grpc::{File, FileEventType, FileRequest, FileResponse};
 use log::{debug, error, info, warn};
 use notify::DebouncedEvent;
 use std::ffi::OsStr;
 use std::path::Path;
 use tonic::transport::Channel;
-
-mod grpc;
 
 /// The `Indexer` is responsible to handle events on files
 /// and to synchronize those files onto the server.
@@ -21,10 +19,10 @@ pub struct Indexer {
 
 impl Indexer {
     /// Bootstrap the server
-    pub async fn bootstrap() -> Result<Self> {
-        info!("starting server");
+    pub async fn bootstrap(server_url: String) -> Result<Self> {
+        info!("bootstrapping indexer");
 
-        let client = FileManagerServiceClient::connect("http://localhost:8090").await?;
+        let client = FileManagerServiceClient::connect(server_url).await?;
 
         Ok(Self { client })
     }

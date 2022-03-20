@@ -1,8 +1,11 @@
 mod agent;
+mod grpc;
 mod indexer;
+mod synchronizer;
 mod watcher;
 
 use crate::indexer::Indexer;
+use crate::synchronizer::Synchronizer;
 use crate::watcher::PoolWatcher;
 use agent::list::ListCommand;
 use anyhow::{anyhow, Result};
@@ -91,7 +94,18 @@ async fn main() -> Result<()> {
 
     if cli.daemon {
         info!("starting daemon");
-        let indexer = Indexer::bootstrap().await?;
+        let server = "http://localhost:8090";
+
+        let indexer = Indexer::bootstrap(server.to_string()).await?;
+
+        // Start synchronizer into another thread because
+        // PoolWatcher start() method is blocking.
+        tokio::task::spawn(async {
+            Synchronizer::bootstrap(server.to_string())
+                .await?
+                .listen()
+                .await
+        });
 
         PoolWatcher::init(&cli.files)
             .add_listener(Arc::new(Mutex::new(indexer.clone())))
