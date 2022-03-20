@@ -4,7 +4,8 @@ version: '3.8'
 x-mongo-common: &mongo-common
   image: mongo:5.0.6
   restart: always
-  network_mode: host
+  expose:
+    - 27017
 
 # Common settings for MinIO based containers
 x-minio-common: &minio-common
@@ -25,29 +26,39 @@ x-minio-common: &minio-common
 services:
   mongo-rs-1:
     <<: *mongo-common
+    hostname: mongo-rs-1
     container_name: mongo-rs-1
-    command: ["mongod", "--port", "27017", "--replSet", "polydrive-rs"]
+    command: ["mongod", "--bind_ip_all", "--replSet", "polydrive-rs"]
+    ports:
+      - "27017:27017"
     volumes:
       - ./.docker/data/mongo-rs-1:/data/db
 
   mongo-rs-2:
     <<: *mongo-common
+    hostname: mongo-rs-2
     container_name: mongo-rs-2
-    command: ["mongod", "--port", "27018", "--replSet", "polydrive-rs"]
+    command: ["mongod", "--bind_ip_all", "--replSet", "polydrive-rs"]
+    ports:
+      - "27018:27017"
     volumes:
       - ./.docker/data/mongo-rs-2:/data/db
 
   mongo-rs-3:
     <<: *mongo-common
+    hostname: mongo-rs-3
     container_name: mongo-rs-3
-    command: ["mongod", "--port", "27019", "--replSet", "polydrive-rs"]
+    command: ["mongod", "--bind_ip_all", "--replSet", "polydrive-rs"]
+    ports:
+      - "27019:27017"
     volumes:
       - ./.docker/data/mongo-rs-3:/data/db
 
   # Special container used to init the Mongo RS
   mongo-rs-initiator:
     container_name: mongo-rs-initiator
-    network_mode: host
+    networks:
+      default:
     build:
       context: .docker
       dockerfile: Dockerfile.mongo-init
