@@ -13,11 +13,11 @@ pub struct Synchronizer {
 impl Synchronizer {
     /// Bootstrap the synchronizer by opening connection
     /// to the server stream.
-    pub async fn bootstrap(server_url: String) -> Result<Self> {
+    pub async fn bootstrap(server_url: &str) -> Result<Self> {
         debug!("boostraping synchronizer");
 
         debug!("subscribe to notifications stream");
-        let mut client = FileManagerServiceClient::connect(server_url).await?;
+        let mut client = FileManagerServiceClient::connect(server_url.to_string()).await?;
         let stream = client.subscribe_notification(()).await?.into_inner();
 
         Ok(Self { stream })

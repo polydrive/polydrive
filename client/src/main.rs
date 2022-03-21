@@ -1,9 +1,11 @@
 mod agent;
+mod config;
 mod grpc;
 mod indexer;
 mod synchronizer;
 mod watcher;
 
+use crate::config::Config;
 use crate::indexer::Indexer;
 use crate::synchronizer::Synchronizer;
 use crate::watcher::PoolWatcher;
@@ -11,6 +13,7 @@ use agent::list::ListCommand;
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use log::{info, LevelFilter};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 pub trait Handler {
@@ -51,6 +54,14 @@ struct Cli {
     /// client --server --watch /**/*.png
     #[clap(long = "watch")]
     files: Vec<String>,
+
+    /// A path to a configuration file in .yml format.
+    ///
+    /// Example:
+    ///
+    /// client --server --watch /tmp --config /tmp/polydrived.yml
+    #[clap(short, long)]
+    config: Option<PathBuf>,
 
     /// The command to execute.
     #[clap(subcommand)]
@@ -93,15 +104,16 @@ async fn main() -> Result<()> {
         .init();
 
     if cli.daemon {
-        info!("starting daemon");
-        let server = "http://localhost:8090";
+        let config = Config::load(cli.config.clone(), Some(true))?;
 
-        let indexer = Indexer::bootstrap(server.to_string()).await?;
+        info!("starting daemon");
+
+        let indexer = Indexer::bootstrap(&config.get_server_address()).await?;
 
         // Start synchronizer into another thread because
         // PoolWatcher start() method is blocking.
-        tokio::task::spawn(async {
-            Synchronizer::bootstrap(server.to_string())
+        tokio::task::spawn(async move {
+            Synchronizer::bootstrap(&config.clone().get_server_address())
                 .await?
                 .listen()
                 .await

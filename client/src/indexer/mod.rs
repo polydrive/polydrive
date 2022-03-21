@@ -19,10 +19,10 @@ pub struct Indexer {
 
 impl Indexer {
     /// Bootstrap the server
-    pub async fn bootstrap(server_url: String) -> Result<Self> {
+    pub async fn bootstrap(server_url: &str) -> Result<Self> {
         info!("bootstrapping indexer");
 
-        let client = FileManagerServiceClient::connect(server_url).await?;
+        let client = FileManagerServiceClient::connect(server_url.to_string()).await?;
 
         Ok(Self { client })
     }
