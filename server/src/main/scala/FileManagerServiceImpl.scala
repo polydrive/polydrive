@@ -1,7 +1,9 @@
 package fr.dopolytech.polydrive
 
-import grpc._
 import file.FileClient
+import grpc._
+import persistency.MongoConfig
+
 import akka.NotUsed
 import akka.actor.typed.ActorSystem
 import akka.event.slf4j.Logger
@@ -12,20 +14,15 @@ import com.google.protobuf.empty.Empty
 import io.grpc.Status
 import io.minio.http.Method
 
-import scala.concurrent.Future
-import scala.concurrent.duration.DurationInt
 import scala.concurrent.ExecutionContext.Implicits.global
-import persistency.MongoConfig
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, Future}
 
 class FileManagerServiceImpl(
     system: ActorSystem[_],
     minioClient: FileClient,
     mongoConfig: MongoConfig
 ) extends FileManagerService {
-  private val logger = Logger(getClass.getName)
-  private implicit val sys: ActorSystem[_] = system
-  private val fileRequester: FileRequester = new FileRequester(mongoConfig)
-
   // We create a stream that can receive dynamically defined inputs
   // and dynamically defined outputs
   // See more: https://doc.akka.io/docs/akka/current/stream/stream-dynamic.html
@@ -41,13 +38,15 @@ class FileManagerServiceImpl(
       // might want to add runWith(Sink.ignore) to not notify
       // when no client available
       .run()
-
+  private implicit val sys: ActorSystem[_] = system
   // We create a flow (sink+source, see definitions) to
   // process, with a backpressure defined
   val busFlow: Flow[File, Notification, NotUsed] =
     Flow
       .fromSinkAndSource(inboundHub, outboundHub)
       .backpressureTimeout(3.seconds)
+  private val logger = Logger(getClass.getName)
+  private val fileRequester: FileRequester = new FileRequester(mongoConfig)
 
   override def fileEvent(in: FileEventRequest): Future[FileResponse] = {
     logger.info(
@@ -64,7 +63,6 @@ class FileManagerServiceImpl(
           case true  => fileRequester.update(file_doc)
           case false => fileRequester.create(file_doc)
         }
-
       }
       case FileEventType.UPDATE => {
         fileRequester.update(file_doc)
@@ -91,7 +89,7 @@ class FileManagerServiceImpl(
     }
     Source.single(in.getFile).viaMat(busFlow)(Keep.right).run()
 
-    val link = minioClient.getPresignedUrl(file.baseName, Method.PUT)
+    val link = minioClient.getPresignedUrl(file.path, Method.PUT)
     Future.successful(
       FileResponse(link)
     )
@@ -107,11 +105,41 @@ class FileManagerServiceImpl(
   /** This route will fetch every file currently available in the sync directory.
     * It will answer every file available
     */
-  override def indexRequest(in: Empty): Future[IndexRequestResponse] = ???
+  override def indexRequest(in: Empty): Future[IndexRequestResponse] = {
+    Future.successful(IndexRequestResponse())
+  }
 
   /** This rpc route allows a client to request to download a single file from
     * the sync directory. It will answer the file metadata and the link where
     * to download the file.
     */
-  override def file(in: FileResponse): Future[FileResponse] = ???
+  override def file(in: FileRequest): Future[FileResponse] = {
+    logger.info(
+      s"a client requested a file. checking if file exists. path=${in.path}"
+    )
+
+    // Check if file exists in DB
+    val fileRequest = fileRequester.findLatest(in.path) map { file =>
+      file.getOrElse(
+        throw new GrpcServiceException(
+          Status.NOT_FOUND.withDescription("File not found in database")
+        )
+      )
+    }
+    val file = Await.result(fileRequest, 10.seconds)
+
+    // Check if file exists in object storage
+    if (!minioClient.pathExists(in.path)) {
+      throw new GrpcServiceException(
+        Status.NOT_FOUND.withDescription("File not found in object storage")
+      )
+    }
+
+    logger.info(s"generating download link for object=${in.path}")
+    val downloadLink = minioClient.getPresignedUrl(in.path, Method.GET)
+
+    Future.successful(
+      FileResponse(downloadLink, Some(File(file.base_name, file.path)))
+    )
+  }
 }

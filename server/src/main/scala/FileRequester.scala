@@ -1,8 +1,8 @@
 package fr.dopolytech.polydrive
 
 import grpc.File
+import persistency.MongoConfig
 
-import akka.actor.typed.ActorSystem
 import akka.event.slf4j.Logger
 import org.bson.codecs.configuration.CodecRegistries.{
   fromProviders,
@@ -19,7 +19,6 @@ import org.mongodb.scala.{MongoClient, MongoCollection, Observable}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import persistency.MongoConfig
 
 object FileDocument {
   def apply(base_name: String, path: String): FileDocument = {
@@ -33,12 +32,11 @@ object FileDocument {
 case class FileDocument(_id: ObjectId, base_name: String, path: String)
 
 class FileRequester(mongoConfig: MongoConfig) {
-  private val logger = Logger(getClass.getName)
   // Taken from improvement of actors into concurrency
   // https://www.chrisstucchio.com/blog/2013/actors_vs_futures.html
   val codecRegistry: CodecRegistry =
     fromRegistries(fromProviders(classOf[FileDocument]), DEFAULT_CODEC_REGISTRY)
-
+  private val logger = Logger(getClass.getName)
   private val client: MongoClient = MongoClient(
     s"mongodb://${mongoConfig.host}/?replicaSet=${mongoConfig.replicaSet}"
   )
@@ -71,17 +69,17 @@ class FileRequester(mongoConfig: MongoConfig) {
     updatedFile.toFuture().map(_.headOption)
   }
 
-  def findLatest(path: String): Future[Option[FileDocument]] = {
-    current_coll
-      .find(equal("path", path))
-      .first()
-      .headOption()
-  }
-
   def findExists(path: String): Future[Boolean] = {
     findLatest(path).map {
       case Some(_) => true
       case None    => false
     }
+  }
+
+  def findLatest(path: String): Future[Option[FileDocument]] = {
+    current_coll
+      .find(equal("path", path))
+      .first()
+      .headOption()
   }
 }

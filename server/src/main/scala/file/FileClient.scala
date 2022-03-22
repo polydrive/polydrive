@@ -1,9 +1,14 @@
 package fr.dopolytech.polydrive
 package file
 
-import com.typesafe.config.Config
+import akka.event.slf4j.Logger
 import io.minio.http.Method
-import io.minio.{BucketExistsArgs, GetPresignedObjectUrlArgs, MinioClient}
+import io.minio.{
+  BucketExistsArgs,
+  GetPresignedObjectUrlArgs,
+  MinioClient,
+  StatObjectArgs
+}
 
 import java.util.concurrent.TimeUnit
 
@@ -30,12 +35,31 @@ class FileClient(minioConfig: MinioConfig) {
         .bucket(minioConfig.bucket)
         .build()
     )
+  private val logger = Logger(getClass.getName)
+
+  def pathExists(path: String): Boolean = {
+    val args = StatObjectArgs
+      .builder()
+      .bucket(minioConfig.bucket)
+      .`object`(path)
+      .build();
+
+    try {
+      client.statObject(args)
+      true
+    } catch {
+      case e: io.minio.errors.ErrorResponseException => {
+        logger.error(s"${e.getMessage} = $path")
+        false
+      }
+    }
+  }
 
   /** Generate an upload URL for a file
     *
     * @return
     */
-  def getPresignedUrl(fileName: String, method: Method = Method.PUT): String = {
+  def getPresignedUrl(path: String, method: Method = Method.PUT): String = {
     if (!isBucketCreated) throw new RuntimeException("bucket not created")
 
     val args = GetPresignedObjectUrlArgs
@@ -43,7 +67,7 @@ class FileClient(minioConfig: MinioConfig) {
       .method(method)
       .bucket(minioConfig.bucket)
       .expiry(15, TimeUnit.MINUTES)
-      .`object`(fileName)
+      .`object`(path)
       .build()
 
     client.getPresignedObjectUrl(args)
