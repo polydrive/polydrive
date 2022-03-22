@@ -1,7 +1,8 @@
 package fr.dopolytech.polydrive
 
-import grpc.FileManagerServiceHandler
 import file.{FileClient, MinioConfig}
+import grpc.FileManagerServiceHandler
+import persistency.MongoConfig
 
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
@@ -13,7 +14,6 @@ import com.typesafe.config.ConfigFactory
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
-import persistency.MongoConfig
 
 object Server {
   def main(args: Array[String]): Unit = {
@@ -33,7 +33,6 @@ object Server {
       conf.getString("mongo.host"),
       conf.getString("mongo.replicaSet")
     )
-
     new Server(system).run(conf.getInt("grpc.port"), minioConfig, mongoConfig)
   }
 }

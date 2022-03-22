@@ -2,10 +2,14 @@
 
 # Initiate the replica set into one of mongo instance
 echo "Starting replica set initialization"
-until mongo --host mongo-rs-1:27017 --eval "print(\"Waited for connection\")"
+for member in mongo-rs-1 mongo-rs-2 mongo-rs-3;
 do
-    sleep 2
+  until mongo --host "${member}:27017" --eval "print(\"Waited for connection on ${member}\")"
+  do
+      sleep 2
+  done
 done
+
 echo "Connection finished"
 echo "Creating replica set"
 mongo --host mongo-rs-1:27017 <<EOF
