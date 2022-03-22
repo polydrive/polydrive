@@ -31,7 +31,7 @@ struct Cli {
     #[clap(short, long, parse(from_occurrences))]
     pub(crate) verbose: usize,
 
-    /// If set, the client will be act as a server.
+    /// If set, the client will be act as a daemon.
     #[clap(short, long)]
     daemon: bool,
 
@@ -47,11 +47,11 @@ struct Cli {
     ///
     /// To watch every changes, files and folders, inside /tmp :
     ///
-    /// client --server --watch /tmp
+    /// client --daemon --watch /tmp
     ///
     /// To watch every changes only on existing .png files :
     ///
-    /// client --server --watch /**/*.png
+    /// client --daemon --watch /**/*.png
     #[clap(long = "watch")]
     files: Vec<String>,
 
@@ -59,7 +59,7 @@ struct Cli {
     ///
     /// Example:
     ///
-    /// client --server --watch /tmp --config /tmp/polydrived.yml
+    /// client --daemon --watch /tmp --config /tmp/polydrived.yml
     #[clap(short, long)]
     config: Option<PathBuf>,
 
@@ -71,7 +71,7 @@ struct Cli {
 impl Cli {
     /// Get the current command to execute.
     ///
-    /// If the command is not valid for the current enabled mode (server or agent), we must throw an error.
+    /// If the command is not valid for the current enabled mode (daemon or agent), we must throw an error.
     pub fn command(self) -> Result<Box<dyn Handler>> {
         if let Some(command) = self.command {
             return match command {
@@ -80,7 +80,7 @@ impl Cli {
         }
 
         Err(anyhow!(
-            "no command provided. To start client in server mode, use --server."
+            "no command provided. To start client in daemon mode, use --daemon."
         ))
     }
 }
