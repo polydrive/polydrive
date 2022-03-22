@@ -13,7 +13,9 @@ use crate::watcher::PoolWatcher;
 use agent::list::ListCommand;
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
+use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::{info, LevelFilter};
+use std::io::{self, prelude::*, BufReader, BufWriter};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -91,6 +93,12 @@ pub enum Command {
     List(ListCommand),
 }
 
+fn handle_error(connection: io::Result<LocalSocketStream>) -> Option<LocalSocketStream> {
+    connection
+        .map_err(|error| eprintln!("Incoming connection failed: {}", error))
+        .ok()
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli: Cli = Cli::parse();
@@ -119,6 +127,44 @@ async fn main() -> Result<()> {
                 .listen()
                 .await
         });
+
+        std::thread::spawn(move || {
+            info!("starting listen on socket");
+            let listener = LocalSocketListener::bind("/tmp/polydrive.sock").unwrap();
+            for conn in listener.incoming().filter_map(handle_error) {
+                println!("Incoming connection!");
+                // Add buffering to the connection to read a line.
+                //let mut conn = BufReader::new(conn);
+                let mut conn = BufReader::new(conn);
+                let mut buffer = String::new();
+                conn.read_line(&mut buffer).unwrap();
+                println!("Client asked: {}", buffer);
+                if buffer == "list" {
+                    info!("listing files");
+                }
+                let mut conn = BufWriter::new(conn.get_mut());
+                conn.write_all(b"Hello from server!\n").unwrap();
+                println!("Client answered: {}", buffer);
+            }
+        });
+
+        // let listener = LocalSocketListener::bind("/tmp/polydrive.sock")?;
+        // for conn in listener.incoming().filter_map(handle_error) {
+        //     println!("Incoming connection!");
+        //     // Add buffering to the connection to read a line.
+        //     //let mut conn = BufReader::new(conn);
+        //     let mut conn = BufReader::new(conn);
+        //     let mut buffer = String::new();
+        //     conn.read_line(&mut buffer)?;
+        //     println!("Client asked: {}", buffer);
+        //     if buffer == "list" {
+        //         info!("listing files");
+        //     }
+        //     let mut conn = BufWriter::new(conn.get_mut());
+        //     conn.write_all(b"Hello from server!\n")?;
+        //     println!("Client answered: {}", buffer);
+        //     conn.write_all(b"Hello from server!\n")?;
+        // }
 
         PoolWatcher::init(&cli.files)
             .add_listener(Arc::new(Mutex::new(indexer.clone())))
