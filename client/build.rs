@@ -1,4 +1,11 @@
-fn main() {
-    tonic_build::compile_protos("../server/src/main/protobuf/server.proto")
-        .expect("Failed to compile server proto file")
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tonic_build::configure().build_server(false).compile(
+        &[
+            "../server/src/main/protobuf/server.proto",
+            "../server/src/main/protobuf/file.proto",
+            "../server/src/main/protobuf/client.proto",
+        ],
+        &["../server/src/main/protobuf/"],
+    )?;
+    Ok(())
 }

@@ -1,5 +1,5 @@
-use crate::grpc::file_manager_service_client::FileManagerServiceClient;
-use crate::grpc::{File, FileEventType, FileRequest, FileResponse};
+use crate::grpc::file::{File, FileEventRequest, FileEventType, FileResponse};
+use crate::grpc::server::file_manager_service_client::FileManagerServiceClient;
 use crate::watcher::WatcherListener;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -28,7 +28,7 @@ impl Indexer {
     }
 
     /// Notify the remote server that a new event was emitted
-    async fn notify(&self, data: FileRequest) -> Result<FileResponse> {
+    async fn notify(&self, data: FileEventRequest) -> Result<FileResponse> {
         debug!("sending notify request to remote server");
         Ok(self.client.clone().file_event(data).await?.into_inner())
     }
@@ -47,7 +47,7 @@ impl Indexer {
         );
 
         let response = self
-            .notify(FileRequest {
+            .notify(FileEventRequest {
                 client_name: None,
                 event_type: event.into(),
                 file: Some(File {

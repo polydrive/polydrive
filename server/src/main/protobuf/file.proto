@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "fr.dopolytech.polydrive.grpc";
+option java_outer_classname = "FileProto";
+
+import "client.proto";
+import "google/protobuf/timestamp.proto";
+package file;
+
+enum FileEventType {
+  UNKNOWN = 0;
+  CREATE = 1;
+  UPDATE = 2;
+  DELETE = 3;
+}
+
+/*
+Global format for a file
+ */
+message File {
+  // The file name with extension
+  string base_name = 1;
+  // Full path to file in synced directory
+  string path = 2;
+
+  google.protobuf.Timestamp last_updated = 3;
+  google.protobuf.Timestamp created = 4;
+}
+
+/*
+When the client has an event (created file, udpated...), this is the request
+format
+ */
+message FileEventRequest {
+  client.Client client_name = 1;
+
+  File file = 2;
+  FileEventType event_type = 3;
+}
+
+/*
+Message used when we request a file & server send back data for this file or when
+we send an event related to a file
+ */
+message FileResponse {
+  string link = 1;
+  optional File file = 2;
+}
+
+/**
+This message should be used when a client wants to fetch a file from remote
+server
+ */
+message FileRequest {
+  client.Client client_name = 1;
+
+  string path = 2;
+  optional string version = 16;
+}
+
