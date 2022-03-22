@@ -1,5 +1,5 @@
-use crate::grpc::file_manager_service_client::FileManagerServiceClient;
-use crate::grpc::{File, FileEventType, FileRequest, FileResponse};
+use crate::grpc::file::{File, FileEventRequest, FileEventType, FileResponse};
+use crate::grpc::server::file_manager_service_client::FileManagerServiceClient;
 use crate::watcher::WatcherListener;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -28,7 +28,7 @@ impl Indexer {
     }
 
     /// Notify the remote server that a new event was emitted
-    async fn notify(&self, data: FileRequest) -> Result<FileResponse> {
+    async fn notify(&self, data: FileEventRequest) -> Result<FileResponse> {
         debug!("sending notify request to remote server");
         Ok(self.client.clone().file_event(data).await?.into_inner())
     }
@@ -47,7 +47,7 @@ impl Indexer {
         );
 
         let response = self
-            .notify(FileRequest {
+            .notify(FileEventRequest {
                 client_name: None,
                 event_type: event.into(),
                 file: Some(File {
@@ -77,6 +77,14 @@ impl WatcherListener for Indexer {
     async fn on_event(&self, event: &DebouncedEvent) -> Result<()> {
         match event {
             DebouncedEvent::Create(path) => {
+                // We don't want to sync an empty directory.
+                // if a directory has been created, it will be synced automatically when a file
+                // will be created into.
+                if path.is_dir() {
+                    warn!("directory detected. it will be synced when a file will be created into. directory={}", &path.display());
+                    return Ok(());
+                }
+
                 debug!("new file detected. file={}", &path.display());
                 if let Err(e) = self.index(path.as_path(), FileEventType::from(event)).await {
                     error!(
