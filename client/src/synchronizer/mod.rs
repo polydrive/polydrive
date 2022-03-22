@@ -6,6 +6,9 @@ use tonic::Streaming;
 
 /// The `Synchronizer` component is responsible to subscribe to
 /// remote server notifications and synchronize the fs with the remote fs.
+pub struct Synchronizer {
+    stream: Streaming<Notification>,
+}
 
 impl Synchronizer {
     /// Bootstrap the synchronizer by opening connection
