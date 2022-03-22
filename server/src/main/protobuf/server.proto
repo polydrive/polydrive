@@ -18,19 +18,19 @@ message IndexRequestResponse {
 }
 
 service FileManagerService {
-    rpc FileEvent (file.FileEventRequest) returns (file.FileResponse);
-    rpc SubscribeNotification (google.protobuf.Empty) returns (stream Notification);
+  rpc FileEvent (file.FileEventRequest) returns (file.FileResponse);
+  rpc SubscribeNotification (google.protobuf.Empty) returns (stream Notification);
 
-    /*
-     This route will fetch every file currently available in the sync directory.
-     It will answer every file available
-     */
-    rpc IndexRequest (google.protobuf.Empty) returns (IndexRequestResponse);
+  /*
+   This route will fetch every file currently available in the sync directory.
+   It will answer every file available
+   */
+  rpc IndexRequest (google.protobuf.Empty) returns (IndexRequestResponse);
 
-    /*
-     This rpc route allows a client to request to download a single file from
-     the sync directory. It will answer the file metadata and the link where
-     to download the file.
-     */
-    rpc File (file.FileRequest) returns (file.FileResponse);
+  /*
+   This rpc route allows a client to request to download a single file from
+   the sync directory. It will answer the file metadata and the link where
+   to download the file.
+   */
+  rpc File (file.FileRequest) returns (file.FileResponse);
 }
