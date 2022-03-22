@@ -49,7 +49,7 @@ class FileManagerServiceImpl(
       .fromSinkAndSource(inboundHub, outboundHub)
       .backpressureTimeout(3.seconds)
 
-  override def fileEvent(in: FileRequest): Future[FileResponse] = {
+  override def fileEvent(in: FileEventRequest): Future[FileResponse] = {
     logger.info(
       "[{}] Received file event from {}",
       in.eventType,
@@ -103,4 +103,15 @@ class FileManagerServiceImpl(
     logger.info("Received a subscribe notification")
     outboundHub
   }
+
+  /** This route will fetch every file currently available in the sync directory.
+    * It will answer every file available
+    */
+  override def indexRequest(in: Empty): Future[IndexRequestResponse] = ???
+
+  /** This rpc route allows a client to request to download a single file from
+    * the sync directory. It will answer the file metadata and the link where
+    * to download the file.
+    */
+  override def file(in: FileResponse): Future[FileResponse] = ???
 }

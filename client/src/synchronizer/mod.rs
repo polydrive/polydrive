@@ -1,5 +1,5 @@
-use crate::grpc::file_manager_service_client::FileManagerServiceClient;
-use crate::grpc::Notification;
+use crate::grpc::server::file_manager_service_client::FileManagerServiceClient;
+use crate::grpc::server::Notification;
 use anyhow::Result;
 use log::{debug, info};
 use tonic::Streaming;
