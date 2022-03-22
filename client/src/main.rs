@@ -131,40 +131,34 @@ async fn main() -> Result<()> {
         std::thread::spawn(move || {
             info!("starting listen on socket");
             let listener = LocalSocketListener::bind("/tmp/polydrive.sock").unwrap();
-            for conn in listener.incoming().filter_map(handle_error) {
-                println!("Incoming connection!");
-                // Add buffering to the connection to read a line.
-                //let mut conn = BufReader::new(conn);
-                let mut conn = BufReader::new(conn);
+            for stream in listener.incoming().filter_map(handle_error) {
+                println!("Incoming connection!, {:?}", stream);
+                let mut reader = BufReader::new(stream);
+                // read in vec
+                // let mut buffer = Vec::new();
+                // reader.read_to_end(&mut buffer).expect("failed to read");
+                // let command = String::from_utf8(buffer)
+                //     .expect("failed to convert buffer to string")
+                //     .trim()
+                //     .to_string();
+
+                // read in string
                 let mut buffer = String::new();
-                conn.read_line(&mut buffer).unwrap();
-                println!("Client asked: {}", buffer);
-                if buffer == "list" {
-                    info!("listing files");
+                reader.read_line(&mut buffer).expect("failed to read");
+                info!("received: {}", buffer);
+                let command = buffer.trim();
+                info!("Command received: {}", command);
+                let mut response = String::new();
+                if command == "list" {
+                    info!("Listing...");
+                    response = "Listing not yet implemented".to_string();
                 }
-                let mut conn = BufWriter::new(conn.get_mut());
-                conn.write_all(b"Hello from server!\n").unwrap();
-                println!("Client answered: {}", buffer);
+
+                let mut writer = BufWriter::new(reader.get_mut());
+                writer.write_all(response.as_bytes()).unwrap();
+                info!("response sent");
             }
         });
-
-        // let listener = LocalSocketListener::bind("/tmp/polydrive.sock")?;
-        // for conn in listener.incoming().filter_map(handle_error) {
-        //     println!("Incoming connection!");
-        //     // Add buffering to the connection to read a line.
-        //     //let mut conn = BufReader::new(conn);
-        //     let mut conn = BufReader::new(conn);
-        //     let mut buffer = String::new();
-        //     conn.read_line(&mut buffer)?;
-        //     println!("Client asked: {}", buffer);
-        //     if buffer == "list" {
-        //         info!("listing files");
-        //     }
-        //     let mut conn = BufWriter::new(conn.get_mut());
-        //     conn.write_all(b"Hello from server!\n")?;
-        //     println!("Client answered: {}", buffer);
-        //     conn.write_all(b"Hello from server!\n")?;
-        // }
 
         PoolWatcher::init(&cli.files)
             .add_listener(Arc::new(Mutex::new(indexer.clone())))
