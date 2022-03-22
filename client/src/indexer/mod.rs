@@ -77,6 +77,14 @@ impl WatcherListener for Indexer {
     async fn on_event(&self, event: &DebouncedEvent) -> Result<()> {
         match event {
             DebouncedEvent::Create(path) => {
+                // We don't want to sync an empty directory.
+                // if a directory has been created, it will be synced automatically when a file
+                // will be created into.
+                if path.is_dir() {
+                    warn!("directory detected. it will be synced when a file will be created into. directory={}", &path.display());
+                    return Ok(());
+                }
+
                 debug!("new file detected. file={}", &path.display());
                 if let Err(e) = self.index(path.as_path(), FileEventType::from(event)).await {
                     error!(
