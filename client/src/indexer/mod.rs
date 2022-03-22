@@ -1,7 +1,8 @@
 use crate::grpc::file::{File, FileEventRequest, FileEventType, FileResponse};
 use crate::grpc::server::file_manager_service_client::FileManagerServiceClient;
+use crate::storage_manager::StorageManager;
 use crate::watcher::WatcherListener;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use log::{debug, error, info, warn};
 use notify::DebouncedEvent;
@@ -15,6 +16,8 @@ use tonic::transport::Channel;
 pub struct Indexer {
     /// The file manager gRPC client
     client: FileManagerServiceClient<Channel>,
+    /// The file manager
+    storage_manager: StorageManager,
 }
 
 impl Indexer {
@@ -23,8 +26,12 @@ impl Indexer {
         info!("bootstrapping indexer");
 
         let client = FileManagerServiceClient::connect(server_url.to_string()).await?;
+        let storage_manager = StorageManager::init();
 
-        Ok(Self { client })
+        Ok(Self {
+            client,
+            storage_manager,
+        })
     }
 
     /// Notify the remote server that a new event was emitted
@@ -36,7 +43,7 @@ impl Indexer {
     /// Index a file on the remote server.
     async fn index(&self, path: &Path, event: FileEventType) -> Result<()> {
         info!("indexing new file {}", path.display());
-        let _ = std::fs::File::open(path)?;
+        let file = std::fs::File::open(path)?;
 
         let filename = path.file_name().unwrap_or_else(|| OsStr::new("file"));
         let extension = path.extension().unwrap_or_else(|| OsStr::new("txt"));
@@ -64,7 +71,10 @@ impl Indexer {
             filename, &response.link
         );
 
-        // TODO Hugo: upload here
+        self.storage_manager
+            .upload(&response.link, file, filename)
+            .await
+            .map_err(|e| anyhow!("failed to upload file={:?}, reason={}", filename, e))?;
 
         info!("successfully indexed file {}", path.display());
 

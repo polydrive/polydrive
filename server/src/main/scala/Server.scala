@@ -33,7 +33,6 @@ object Server {
       conf.getString("mongo.host"),
       conf.getString("mongo.replicaSet")
     )
-
     new Server(system).run(conf.getInt("grpc.port"), minioConfig, mongoConfig)
   }
 }

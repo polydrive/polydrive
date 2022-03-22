@@ -26,6 +26,7 @@ tokio = { version="1.17.0", features=["macros", "rt-multi-thread"] }
 async-trait = "0.1.52"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8.23"
+reqwest = "0.11.10"
 
 [build-dependencies]
 tonic-build = "0.6.2"
