@@ -4,6 +4,7 @@ mod grpc;
 mod indexer;
 mod synchronizer;
 mod watcher;
+mod file_manager;
 
 use crate::config::Config;
 use crate::indexer::Indexer;

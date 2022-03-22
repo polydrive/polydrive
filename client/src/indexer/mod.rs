@@ -8,6 +8,7 @@ use notify::DebouncedEvent;
 use std::ffi::OsStr;
 use std::path::Path;
 use tonic::transport::Channel;
+use crate::file_manager::FileManager;
 
 /// The `Indexer` is responsible to handle events on files
 /// and to synchronize those files onto the server.
@@ -36,7 +37,7 @@ impl Indexer {
     /// Index a file on the remote server.
     async fn index(&self, path: &Path, event: FileEventType) -> Result<()> {
         info!("indexing new file {}", path.display());
-        let _ = std::fs::File::open(path)?;
+        let file = std::fs::File::open(path)?;
 
         let filename = path.file_name().unwrap_or_else(|| OsStr::new("file"));
         let extension = path.extension().unwrap_or_else(|| OsStr::new("txt"));
@@ -64,7 +65,8 @@ impl Indexer {
             filename, &response.link
         );
 
-        // TODO Hugo: upload here
+        let reqwest_client = FileManager::init();
+        reqwest_client.upload(&response.link, file, filename).await?;
 
         info!("successfully indexed file {}", path.display());
 
