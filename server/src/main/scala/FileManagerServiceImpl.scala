@@ -23,6 +23,7 @@ class FileManagerServiceImpl(
     minioClient: FileClient,
     mongoConfig: MongoConfig
 ) extends FileManagerService {
+  private implicit val sys: ActorSystem[_] = system
   // We create a stream that can receive dynamically defined inputs
   // and dynamically defined outputs
   // See more: https://doc.akka.io/docs/akka/current/stream/stream-dynamic.html
@@ -38,7 +39,6 @@ class FileManagerServiceImpl(
       // might want to add runWith(Sink.ignore) to not notify
       // when no client available
       .run()
-  private implicit val sys: ActorSystem[_] = system
   // We create a flow (sink+source, see definitions) to
   // process, with a backpressure defined
   val busFlow: Flow[File, Notification, NotUsed] =
