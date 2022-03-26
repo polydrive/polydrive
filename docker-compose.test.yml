@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  client-1:
+    container_name: client-1
+    network_mode: host
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    entrypoint: ["./polydrive", "--daemon", "--watch", "/home/polydrive"]
+
+  client-2:
+    container_name: client-2
+    network_mode: host
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    entrypoint: ["./polydrive", "--daemon", "--watch", "/tmp"]
