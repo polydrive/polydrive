@@ -50,20 +50,20 @@ class FileManagerServiceImpl(
 
   override def fileEvent(in: FileEventRequest): Future[FileResponse] = {
     logger.info(
-      "[{}] Received file event from {}",
+      "[{}] Received file event for file {}",
       in.eventType,
-      in.getClientName.hostName
+      in.getFile.path
     )
+
     val file = in.getFile
     val file_doc = FileDocument.from(file)
 
     in.eventType match {
-      case FileEventType.CREATE => {
+      case FileEventType.CREATE =>
         fileRequester.findExists(file.path).map {
           case true  => fileRequester.update(file_doc)
           case false => fileRequester.create(file_doc)
         }
-      }
       case FileEventType.UPDATE => {
         fileRequester.update(file_doc)
       }
@@ -87,7 +87,6 @@ class FileManagerServiceImpl(
         )
       }
     }
-    Source.single(in.getFile).viaMat(busFlow)(Keep.right).run()
 
     val link = minioClient.getPresignedUrl(file.path, Method.PUT)
     Future.successful(
@@ -141,5 +140,32 @@ class FileManagerServiceImpl(
     Future.successful(
       FileResponse(downloadLink, Some(File(file.base_name, file.path)))
     )
+  }
+
+  /** Method called when a client trigger an upload event.
+    * @param in
+    * @return
+    */
+  override def onUploadEvent(event: UploadEvent): Future[Empty] = {
+    event.status match {
+      // In case of success, for now we simply send a notification on the
+      // stream to allow clients to synchronize.
+      // TODO: implement a state to manage the single source of truth in the server
+      case UploadStatus.SUCCESS => {
+        logger.info(
+          s"File ${event.path} has been successfully uploaded. notifying clients for synchronization"
+        )
+        Source.single(File("", event.path)).viaMat(busFlow)(Keep.right).run()
+      }
+      // In case of error, we don't want for now to handle something. We simply log an error
+      // and trigger the deletion of the file in the database.
+      case UploadStatus.FAILURE => {
+        logger.error(
+          s"An error was detected when a client has tried to upload the file. file=${event.message}, error=${event.message}"
+        )
+        // TODO: remove file from database
+      }
+    }
+    Future.successful(Empty())
   }
 }

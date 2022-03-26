@@ -7,6 +7,7 @@ option java_outer_classname = "ServerProto";
 package server;
 
 import "file.proto";
+import "upload.proto";
 import "google/protobuf/empty.proto";
 
 message Notification {
@@ -33,4 +34,9 @@ service FileManagerService {
    to download the file.
    */
   rpc File (file.FileRequest) returns (file.FileResponse);
+
+  /*
+  Route called by clients when they ended their file upload.
+   */
+  rpc OnUploadEvent(upload.UploadEvent) returns (google.protobuf.Empty);
 }
