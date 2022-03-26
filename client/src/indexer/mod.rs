@@ -2,7 +2,7 @@ use crate::grpc::file::{File, FileEventRequest, FileEventType, FileResponse};
 use crate::grpc::server::file_manager_service_client::FileManagerServiceClient;
 use crate::storage_manager::StorageManager;
 use crate::watcher::WatcherListener;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use log::{debug, error, info, warn};
 use notify::DebouncedEvent;
@@ -26,7 +26,7 @@ impl Indexer {
         info!("bootstrapping indexer");
 
         let client = FileManagerServiceClient::connect(server_url.to_string()).await?;
-        let storage_manager = StorageManager::init();
+        let storage_manager = StorageManager::init(client.clone());
 
         Ok(Self {
             client,
@@ -72,11 +72,8 @@ impl Indexer {
         );
 
         self.storage_manager
-            .upload(&response.link, file, filename)
-            .await
-            .map_err(|e| anyhow!("failed to upload file={:?}, reason={}", filename, e))?;
-
-        info!("successfully indexed file {}", path.display());
+            .upload(&response.link, &path.display().to_string(), file)
+            .await?;
 
         Ok(())
     }
