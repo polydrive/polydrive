@@ -17,6 +17,10 @@ pub mod file {
     }
 }
 
+pub mod upload {
+    tonic::include_proto!("upload");
+}
+
 pub mod server {
     tonic::include_proto!("server");
 }

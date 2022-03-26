@@ -4,6 +4,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "../server/src/main/protobuf/server.proto",
             "../server/src/main/protobuf/file.proto",
             "../server/src/main/protobuf/client.proto",
+            "../server/src/main/protobuf/upload.proto",
         ],
         &["../server/src/main/protobuf/"],
     )?;
