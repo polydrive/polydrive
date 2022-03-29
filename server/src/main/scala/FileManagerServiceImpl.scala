@@ -74,10 +74,7 @@ class FileManagerServiceImpl(
         )
       }
       case FileEventType.DELETE => {
-        logger.error("Trying to delete file but not implemented")
-        new GrpcServiceException(
-          Status.UNIMPLEMENTED
-        )
+        fileRequester.delete(file_doc)
       }
       case _ => {
         new GrpcServiceException(
