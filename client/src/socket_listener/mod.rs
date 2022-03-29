@@ -1,15 +1,16 @@
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::info;
+use std::fs::remove_file;
 use std::io::{self, prelude::*, BufReader, BufWriter};
 
-pub struct SocketListener {
-    //socket: LocalSocketStream,
-}
+pub struct SocketListener {}
 
 impl SocketListener {
     pub fn ctrlc_handler() -> Result<(), ()> {
+        info!("Setting ctrl-c handler");
         ctrlc::set_handler(move || {
             println!("received Ctrl+C!");
+            remove_file("/tmp/polydrive.sock").unwrap();
             std::process::exit(0);
         })
         .unwrap();
