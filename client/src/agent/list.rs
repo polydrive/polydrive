@@ -11,15 +11,6 @@ impl Handler for ListCommand {
     fn handler(&self) -> Result<()> {
         log::info!("This should print the files");
 
-        // let mut stream = LocalSocketStream::connect("/tmp/polydrive.sock")?;
-        // let mut writer = BufWriter::new(&mut stream);
-        // writer.write_all(b"list\n")?;
-        // println!("List command sent");
-
-        // let mut reader = BufReader::new(writer.get_mut());
-        // let mut buffer = Vec::new();
-        // reader.read_to_end(&mut buffer)?;
-
         let mut stream = LocalSocketStream::connect("/tmp/polydrive.sock")?;
         stream.write_all(b"list\n")?;
         println!("List command sent");

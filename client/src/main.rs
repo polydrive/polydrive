@@ -2,6 +2,7 @@ mod agent;
 mod config;
 mod grpc;
 mod indexer;
+mod socket_listener;
 mod storage_manager;
 mod synchronizer;
 mod watcher;
@@ -13,9 +14,8 @@ use crate::watcher::PoolWatcher;
 use agent::list::ListCommand;
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
-use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::{info, LevelFilter};
-use std::io::{self, prelude::*, BufReader, BufWriter};
+use socket_listener::SocketListener;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -93,12 +93,6 @@ pub enum Command {
     List(ListCommand),
 }
 
-fn handle_error(connection: io::Result<LocalSocketStream>) -> Option<LocalSocketStream> {
-    connection
-        .map_err(|error| eprintln!("Incoming connection failed: {}", error))
-        .ok()
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli: Cli = Cli::parse();
@@ -128,37 +122,8 @@ async fn main() -> Result<()> {
                 .await
         });
 
-        std::thread::spawn(move || {
-            info!("starting listen on socket");
-            let listener = LocalSocketListener::bind("/tmp/polydrive.sock").unwrap();
-            for stream in listener.incoming().filter_map(handle_error) {
-                println!("Incoming connection!, {:?}", stream);
-                let mut reader = BufReader::new(stream);
-                // read in vec
-                // let mut buffer = Vec::new();
-                // reader.read_to_end(&mut buffer).expect("failed to read");
-                // let command = String::from_utf8(buffer)
-                //     .expect("failed to convert buffer to string")
-                //     .trim()
-                //     .to_string();
-
-                // read in string
-                let mut buffer = String::new();
-                reader.read_line(&mut buffer).expect("failed to read");
-                info!("received: {}", buffer);
-                let command = buffer.trim();
-                info!("Command received: {}", command);
-                let mut response = String::new();
-                if command == "list" {
-                    info!("Listing...");
-                    response = "Listing not yet implemented".to_string();
-                }
-
-                let mut writer = BufWriter::new(reader.get_mut());
-                writer.write_all(response.as_bytes()).unwrap();
-                info!("response sent");
-            }
-        });
+        SocketListener::start().unwrap();
+        // SocketListener::start().await?;
 
         PoolWatcher::init(&cli.files)
             .add_listener(Arc::new(Mutex::new(indexer.clone())))
