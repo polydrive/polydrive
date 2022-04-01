@@ -1,19 +1,47 @@
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::info;
+use signal_hook::consts::{SIGINT, SIGKILL, TERM_SIGNALS};
+// use signal_hook::iterator::exfiltrator::WithOrigin;
+// use signal_hook::iterator::SignalsInfo;
+use signal_hook::iterator::Signals;
 use std::fs::remove_file;
 use std::io::{self, prelude::*, BufReader, BufWriter};
+use std::thread;
 
 pub struct SocketListener {}
 
 impl SocketListener {
-    pub fn ctrlc_handler() -> Result<(), ()> {
-        info!("Setting ctrl-c handler");
-        ctrlc::set_handler(move || {
-            println!("received Ctrl+C!");
-            remove_file("/tmp/polydrive.sock").unwrap();
-            std::process::exit(0);
-        })
-        .unwrap();
+    pub fn exit_signal_handler() -> Result<(), ()> {
+        info!("Setting exit handler");
+        let mut signals = Signals::new(&[SIGINT]).expect("failed to create signal listener");
+        // let mut sigs = vec![SIGINT, SIGKILL];
+        // sigs.extend(TERM_SIGNALS);
+        // let mut signals =
+        //     signal_hook::iterator::Signals::new(&sigs).expect("failed to create signals");
+        // let signal_handler = signals.handle();
+        // let mut signals = SignalsInfo::new(&sigs).expect("failed to create signals info");
+        //let mut signals = Signals::new(&[SIGINT]).expect("failed to create signal listener");
+        thread::spawn(move || {
+            // for info in &mut signals {
+            //     match info.signal {
+            for sig in signals.forever() {
+                match sig {
+                    SIGINT => {
+                        println!("received SIGINT, exiting...");
+                        remove_file("/tmp/polydrive.sock").unwrap();
+                        std::process::exit(0);
+                    }
+                    SIGKILL => {
+                        println!("received SIGKILL, forcing exiting");
+                        std::process::exit(0);
+                    }
+                    _ => {
+                        println!("Received signal {:?}", sig);
+                        // println!("Received signal {:?}", info.signal);
+                    }
+                }
+            }
+        });
         Ok(())
     }
 
@@ -24,7 +52,8 @@ impl SocketListener {
     }
 
     pub fn start() -> Result<(), ()> {
-        SocketListener::ctrlc_handler().unwrap();
+        //SocketListener::ctrlc_handler().unwrap();
+        SocketListener::exit_signal_handler().unwrap();
 
         std::thread::spawn(move || {
             info!("starting listen on socket");
