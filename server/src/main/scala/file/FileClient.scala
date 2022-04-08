@@ -5,6 +5,7 @@ import akka.event.slf4j.Logger
 import io.minio.http.Method
 import io.minio.{
   BucketExistsArgs,
+  GetObjectArgs,
   GetPresignedObjectUrlArgs,
   MinioClient,
   StatObjectArgs
@@ -59,7 +60,11 @@ class FileClient(minioConfig: MinioConfig) {
     *
     * @return
     */
-  def getPresignedUrl(path: String, method: Method = Method.PUT): String = {
+  def getPresignedUrl(
+      path: String,
+      method: Method = Method.PUT,
+      version: String = "1"
+  ): String = {
     if (!isBucketCreated) throw new RuntimeException("bucket not created")
 
     val args = GetPresignedObjectUrlArgs

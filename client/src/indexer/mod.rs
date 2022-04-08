@@ -52,7 +52,6 @@ impl Indexer {
             "requesting link for event={:?}, filename={:?}, extension={:?}, path={:?}",
             &event, filename, extension, path
         );
-
         let response = self
             .notify(FileEventRequest {
                 client_name: None,
@@ -102,7 +101,12 @@ impl WatcherListener for Indexer {
             }
             DebouncedEvent::Write(path) => {
                 debug!("modification detected. file={}", &path.display());
-                warn!("behavior not implemented");
+                if let Err(e) = self.index(path.as_path(), FileEventType::Update).await {
+                    error!(
+                        "an error occurred when trying to index the file. details={}",
+                        e
+                    )
+                }
             }
             DebouncedEvent::Chmod(path) => {
                 debug!("file attributes updated. file={}", &path.display());

@@ -4,7 +4,7 @@ use anyhow::Result;
 use log::{debug, error, info};
 use reqwest::Client;
 use std::fs::File;
-use std::io::{copy, BufReader, Read};
+use std::io::copy;
 use tonic::transport::Channel;
 
 #[derive(Clone)]
@@ -25,15 +25,17 @@ impl StorageManager {
 
     /// Upload a file to an URL and notify
     /// the remote server with an `UploadEvent`.
-    pub async fn upload(&self, url: &str, path: &str, file: File) -> Result<()> {
+    pub async fn upload(&self, url: &str, path: &str, _file: File) -> Result<()> {
         debug!("reading file content in bytes. file={:?}", path);
-        let mut reader = BufReader::new(file);
-        let mut buffer = Vec::new();
-        reader.read_to_end(&mut buffer)?;
+        let buffer = std::fs::read(path)?;
 
         let (status, message): (UploadStatus, Option<String>) =
             match self.http_client.put(url).body(buffer).send().await {
-                Ok(_) => (UploadStatus::Success, None),
+                Ok(res) if res.status() == 200 => (UploadStatus::Success, None),
+                Ok(res) => {
+                    error!("Server responded with status code {}", res.status());
+                    (UploadStatus::Failure, Some(res.text().await?))
+                }
                 Err(e) => {
                     error!("failed to upload file. details = {}", e.to_string());
                     (UploadStatus::Failure, Some(e.to_string()))
@@ -41,6 +43,7 @@ impl StorageManager {
             };
 
         info!("successfully uploaded file {}", path);
+        info!("status: {:#?}, message: {:#?}", status, message);
 
         self.notify(UploadEvent {
             path: path.to_string(),
