@@ -113,3 +113,16 @@ services:
       - minio-2
       - minio-3
       - minio-4
+
+  minio-initiator:
+    container_name: minio-initiator
+    image: minio/mc
+    depends_on:
+      - nginx
+    entrypoint: 
+      - /bin/sh
+      - -c
+      - |
+        until (mc config host add minio http://nginx:9000 polydrive polydrive) do echo '...waiting...' && sleep 1; done;
+        mc mb minio/test;
+        mc policy set download minio/test;
