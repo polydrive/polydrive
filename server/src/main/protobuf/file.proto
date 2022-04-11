@@ -23,9 +23,11 @@ message File {
   string base_name = 1;
   // Full path to file in synced directory
   string path = 2;
+  // The version of the file
+  optional int32 version = 3;
 
-  google.protobuf.Timestamp last_updated = 3;
-  google.protobuf.Timestamp created = 4;
+  google.protobuf.Timestamp last_updated = 4;
+  google.protobuf.Timestamp created = 5;
 }
 
 /*

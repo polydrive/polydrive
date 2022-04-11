@@ -22,10 +22,9 @@ pub struct Indexer {
 
 impl Indexer {
     /// Bootstrap the server
-    pub async fn bootstrap(server_url: &str) -> Result<Self> {
-        info!("bootstrapping indexer");
+    pub async fn bootstrap(client: FileManagerServiceClient<Channel>) -> Result<Self> {
+        info!("initializing indexer");
 
-        let client = FileManagerServiceClient::connect(server_url.to_string()).await?;
         let storage_manager = StorageManager::init(client.clone());
 
         Ok(Self {
@@ -59,6 +58,7 @@ impl Indexer {
                 file: Some(File {
                     path: path.display().to_string(),
                     base_name: filename.to_str().unwrap().to_string(),
+                    version: None,
                     created: None,
                     last_updated: None,
                 }),
