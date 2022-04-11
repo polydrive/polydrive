@@ -13,6 +13,7 @@ import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import org.mongodb.scala.bson.ObjectId
 import org.mongodb.scala.model.Sorts._
 import org.mongodb.scala.bson.codecs.Macros._
+import org.mongodb.scala.model.{Accumulators, Aggregates}
 import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.Updates._
 import org.mongodb.scala.result.{InsertOneResult, UpdateResult}
@@ -29,12 +30,12 @@ object FileDocument {
       path: String,
       version: Option[Int]
   ): FileDocument = {
-    FileDocument(new ObjectId(), base_name, path, None, false)
+    FileDocument(new ObjectId().toString, base_name, path, None, false)
   }
 
   def from(file: File): FileDocument = {
     FileDocument(
-      new ObjectId(),
+      new ObjectId().toString,
       base_name = file.baseName,
       path = file.path,
       None,
@@ -43,7 +44,7 @@ object FileDocument {
   }
 }
 case class FileDocument(
-    _id: ObjectId,
+    _id: String,
     base_name: String,
     path: String,
     var version: Option[Int],
@@ -114,6 +115,25 @@ class FileRequester(mongoConfig: MongoConfig) {
       )
     }
     val file = Await.result(fileRequest, 10.seconds)
-    return file.version
+    file.version
+  }
+
+  /** Find all files on the DB, and return only their latest versions
+    * @return
+    */
+  def findAll(): Future[Seq[FileDocument]] = {
+    current_coll
+      .aggregate(
+        Seq(
+          Aggregates.group(
+            "$base_name",
+            Accumulators.max("version", "$version"),
+            Accumulators.first("path", "$path"),
+            Accumulators.first("base_name", "$base_name"),
+            Accumulators.first("deleted", "$deleted")
+          )
+        )
+      )
+      .toFuture()
   }
 }

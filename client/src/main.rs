@@ -1,4 +1,5 @@
-mod agent;
+mod cli;
+mod command;
 mod config;
 mod grpc;
 mod indexer;
@@ -6,23 +7,28 @@ mod storage_manager;
 mod synchronizer;
 mod watcher;
 
+use crate::cli::list::ListCommand;
+use crate::command::handler::CommandHandler;
+use crate::command::pipe::{CommandListener, CommandWriter};
 use crate::config::Config;
+use crate::grpc::server::file_manager_service_client::FileManagerServiceClient;
 use crate::indexer::Indexer;
 use crate::synchronizer::Synchronizer;
 use crate::watcher::PoolWatcher;
-use agent::list::ListCommand;
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use log::{info, LevelFilter};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+const POLYDRIVE_SOCKET: &str = "/Users/thomas/polydrive.sock";
+
 pub trait Handler {
     /// Executes the command handler.
     ///
     /// Every command should take no argument, has it is built at runtime with these arguments.
     /// Also, a command must always return a `Result<()>`.
-    fn handler(&self) -> Result<()>;
+    fn handler(&self, command_bus: CommandWriter) -> Result<()>;
 }
 
 #[derive(Parser, Debug)]
@@ -105,16 +111,28 @@ async fn main() -> Result<()> {
         .init();
 
     if cli.daemon {
-        let config = Config::load(cli.config.clone(), Some(true))?;
-
         info!("starting daemon");
 
-        let indexer = Indexer::bootstrap(&config.get_server_address()).await?;
+        let config = Config::load(cli.config.clone(), Some(true))?;
+
+        info!("bootstrapping gRPC client");
+        let client = FileManagerServiceClient::connect(config.get_server_address()).await?;
+
+        let indexer = Indexer::bootstrap(client.clone()).await?;
+
+        let command_handler = CommandHandler::new(client.clone());
+        // Start the socket listener into a thread
+        // in order to handle agent commands
+        tokio::task::spawn(async move {
+            CommandListener::new(POLYDRIVE_SOCKET, command_handler)?
+                .listen()
+                .await
+        });
 
         // Start synchronizer into another thread because
         // PoolWatcher start() method is blocking.
         tokio::task::spawn(async move {
-            Synchronizer::bootstrap(&config.clone().get_server_address())
+            Synchronizer::bootstrap(client.clone())
                 .await?
                 .listen()
                 .await
@@ -128,5 +146,6 @@ async fn main() -> Result<()> {
         return Err(anyhow!("failed to run the daemon"));
     }
 
-    cli.command()?.handler()
+    let cmd_writer = CommandWriter::new(POLYDRIVE_SOCKET)?;
+    cli.command()?.handler(cmd_writer)
 }

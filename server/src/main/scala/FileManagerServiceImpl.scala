@@ -165,4 +165,18 @@ class FileManagerServiceImpl(
     }
     Future.successful(Empty())
   }
+
+  override def getFiles(in: Empty): Future[GetFilesResponse] = {
+    logger.info("getting files from DB")
+    fileRequester
+      .findAll()
+      .map(files => {
+        GetFilesResponse(
+          // As we grouping by file name, the _id here is the filename
+          files.map(document =>
+            File(document._id.toString, document.path, document.version)
+          )
+        )
+      })
+  }
 }

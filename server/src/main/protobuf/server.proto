@@ -18,6 +18,10 @@ message IndexRequestResponse {
   repeated file.File data = 1;
 }
 
+message GetFilesResponse {
+  repeated file.File data = 1;
+}
+
 service FileManagerService {
   rpc FileEvent (file.FileEventRequest) returns (file.FileResponse);
   rpc SubscribeNotification (google.protobuf.Empty) returns (stream Notification);
@@ -39,4 +43,9 @@ service FileManagerService {
   Route called by clients when they ended their file upload.
    */
   rpc OnUploadEvent(upload.UploadEvent) returns (google.protobuf.Empty);
+
+  /*
+  Route called by clients to get the files currently synchronized
+   */
+  rpc GetFiles(google.protobuf.Empty) returns (GetFilesResponse);
 }
