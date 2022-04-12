@@ -1,8 +1,6 @@
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
 use log::info;
-use signal_hook::consts::{SIGINT, SIGKILL, TERM_SIGNALS};
-// use signal_hook::iterator::exfiltrator::WithOrigin;
-// use signal_hook::iterator::SignalsInfo;
+use signal_hook::consts::{SIGINT, SIGKILL};
 use signal_hook::iterator::Signals;
 use std::fs::remove_file;
 use std::io::{self, prelude::*, BufReader, BufWriter};
@@ -14,16 +12,7 @@ impl SocketListener {
     pub fn exit_signal_handler() -> Result<(), ()> {
         info!("Setting exit handler");
         let mut signals = Signals::new(&[SIGINT]).expect("failed to create signal listener");
-        // let mut sigs = vec![SIGINT, SIGKILL];
-        // sigs.extend(TERM_SIGNALS);
-        // let mut signals =
-        //     signal_hook::iterator::Signals::new(&sigs).expect("failed to create signals");
-        // let signal_handler = signals.handle();
-        // let mut signals = SignalsInfo::new(&sigs).expect("failed to create signals info");
-        //let mut signals = Signals::new(&[SIGINT]).expect("failed to create signal listener");
         thread::spawn(move || {
-            // for info in &mut signals {
-            //     match info.signal {
             for sig in signals.forever() {
                 match sig {
                     SIGINT => {
@@ -37,7 +26,6 @@ impl SocketListener {
                     }
                     _ => {
                         println!("Received signal {:?}", sig);
-                        // println!("Received signal {:?}", info.signal);
                     }
                 }
             }
@@ -52,7 +40,6 @@ impl SocketListener {
     }
 
     pub fn start() -> Result<(), ()> {
-        //SocketListener::ctrlc_handler().unwrap();
         SocketListener::exit_signal_handler().unwrap();
 
         std::thread::spawn(move || {
