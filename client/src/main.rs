@@ -123,7 +123,6 @@ async fn main() -> Result<()> {
         });
 
         SocketListener::start().unwrap();
-        // SocketListener::start().await?;
 
         PoolWatcher::init(&cli.files)
             .add_listener(Arc::new(Mutex::new(indexer.clone())))
@@ -134,4 +133,23 @@ async fn main() -> Result<()> {
     }
 
     cli.command()?.handler()
+}
+
+#[cfg(test)]
+mod main_tests {
+    #[test]
+    fn socket_listener_launched() {
+        use crate::socket_listener::SocketListener;
+        use std::path::Path;
+
+        SocketListener::start().unwrap();
+
+        // Verify that a socket is listening
+        assert!(Path::new("/tmp/polydrive.sock").exists());
+        // remove the socket file
+        std::fs::remove_file("/tmp/polydrive.sock").unwrap();
+
+        // Verify that the socket is closed
+        assert!(!Path::new("/tmp/polydrive.sock").exists());
+    }
 }
