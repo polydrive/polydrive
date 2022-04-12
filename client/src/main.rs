@@ -145,10 +145,9 @@ mod main_tests {
         SocketListener::start().unwrap();
 
         // Verify that a socket is listening
-        assert!(Path::new("/tmp/polydrive.sock").exists());
+        assert!(std::fs::metadata(Path::new("/tmp/polydrive.sock")).is_ok());
         // remove the socket file
         std::fs::remove_file("/tmp/polydrive.sock").unwrap();
-
         // Verify that the socket is closed
         assert!(!Path::new("/tmp/polydrive.sock").exists());
     }
