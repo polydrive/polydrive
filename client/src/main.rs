@@ -144,6 +144,8 @@ mod main_tests {
 
         SocketListener::start().unwrap();
 
+        // sleep to wait for the socket listener to be launched
+        std::thread::sleep(std::time::Duration::from_millis(100));
         // Verify that a socket is listening
         assert!(std::fs::metadata(Path::new("/tmp/polydrive.sock")).is_ok());
         // remove the socket file
