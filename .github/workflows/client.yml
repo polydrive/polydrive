@@ -4,7 +4,7 @@ on: [push, pull_request, create]
 jobs:
   basic_ci:
     name: Check
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: ./client
@@ -13,6 +13,10 @@ jobs:
       matrix:
         rust:
           - stable
+        os:
+          - ubuntu-21.04
+          - ubuntu-18.04
+          - macos-11
     steps:
       - name: Code checkout
         uses: actions/checkout@v2
