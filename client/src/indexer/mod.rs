@@ -8,7 +8,8 @@ use log::{debug, error, info, warn};
 use notify::DebouncedEvent;
 use std::ffi::OsStr;
 use std::path::Path;
-use tonic::transport::Channel;
+use tonic::transport::{Channel, Endpoint};
+use crate::lazy::{TonicClient};
 
 /// The `Indexer` is responsible to handle events on files
 /// and to synchronize those files onto the server.
@@ -20,18 +21,34 @@ pub struct Indexer {
     storage_manager: StorageManager,
 }
 
+#[tonic::async_trait]
+impl TonicClient for GeneratedClient<Channel> {
+    async fn try_connect(
+        dest: tonic::transport::Endpoint,
+    ) -> Result<Self, tonic::transport::Error> {
+        GeneratedClient::connect(dest).await
+    }
+}
+
 impl Indexer {
     /// Bootstrap the server
     pub async fn bootstrap(server_url: &str) -> Result<Self> {
         info!("bootstrapping indexer");
 
-        let client = FileManagerServiceClient::connect(server_url.to_string()).await?;
+        let client  = TonicClient::try_connect(Endpoint::from_static(server_url));
         let storage_manager = StorageManager::init(client.clone());
 
         Ok(Self {
             client,
             storage_manager,
         })
+    }
+
+
+    async fn try_connect(
+        dest: tonic::transport::Endpoint,
+    ) -> Result<Self, tonic::transport::Error> {
+        GeneratedClient::connect(dest).await
     }
 
     /// Notify the remote server that a new event was emitted

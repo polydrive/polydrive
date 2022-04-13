@@ -5,6 +5,7 @@ mod indexer;
 mod storage_manager;
 mod synchronizer;
 mod watcher;
+mod lazy;
 
 use crate::config::Config;
 use crate::indexer::Indexer;
