@@ -113,8 +113,22 @@ impl WatcherListener for Indexer {
                 warn!("behavior not implemented");
             }
             DebouncedEvent::Remove(path) => {
+                debug!("removing detected. file={}", &path.display());
+                let response = self
+                    .notify(FileEventRequest {
+                        client_name: None,
+                        event_type: FileEventType::Delete.into(),
+                        file: Some(File {
+                            version: None,
+                            path: path.display().to_string(),
+                            base_name: path.file_name().unwrap().to_str().unwrap().to_string(),
+                            created: None,
+                            last_updated: None,
+                        }),
+                    })
+                    .await?;
                 debug!("removed file. file={}", &path.display());
-                warn!("behavior not implemented");
+                println!("{:?}", response);
             }
             DebouncedEvent::Rename(old, new) => {
                 debug!(
