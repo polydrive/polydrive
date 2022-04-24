@@ -3,8 +3,9 @@ use crate::grpc::upload::{UploadEvent, UploadStatus};
 use anyhow::Result;
 use log::{debug, error, info};
 use reqwest::Client;
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::io::copy;
+use std::path::PathBuf;
 use tonic::transport::Channel;
 
 #[derive(Clone)]
@@ -59,6 +60,8 @@ impl StorageManager {
     #[allow(dead_code)]
     pub async fn download(&self, url: &str, path: &str) -> Result<()> {
         let resp = self.http_client.get(url).send().await?.text().await?;
+        let path_buf = PathBuf::from(path);
+        create_dir_all(path_buf.parent().unwrap())?;
         let mut out = File::create(path).expect("failed to create file");
         copy(&mut resp.as_bytes(), &mut out).expect("failed to copy content");
         Ok(())
