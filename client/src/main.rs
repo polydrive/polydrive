@@ -21,7 +21,7 @@ use log::{info, LevelFilter};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-const POLYDRIVE_SOCKET: &str = "/Users/thomas/polydrive.sock";
+const POLYDRIVE_SOCKET: &str = "/tmp/polydrive.sock";
 
 pub trait Handler {
     /// Executes the command handler.
